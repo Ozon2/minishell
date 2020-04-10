@@ -14,35 +14,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void memory_error(void)
-{
+static void memory_error(void) {
     errno = ENOMEM;
     perror(0);
     exit(1);
 }
 
-static void* xmalloc(size_t size)
-{
-    void* p = malloc(size);
+static void *xmalloc(size_t size) {
+    void *p = malloc(size);
     if (!p)
         memory_error();
     return p;
 }
 
-static void* xrealloc(void* ptr, size_t size)
-{
-    void* p = realloc(ptr, size);
+static void *xrealloc(void *ptr, size_t size) {
+    void *p = realloc(ptr, size);
     if (!p)
         memory_error();
     return p;
 }
 
 /* Read a line from standard input and put it in a char[] */
-static char* readline(void)
-{
+static char *readline(void) {
     size_t buf_len = 16;
-    char* buf = xmalloc(buf_len * sizeof(char));
-
+    char *buf = xmalloc(buf_len * sizeof(char));
     if (fgets(buf, buf_len, stdin) == NULL) {
         free(buf);
         return NULL;
@@ -60,21 +55,21 @@ static char* readline(void)
         buf_len *= 2;
         buf = xrealloc(buf, buf_len * sizeof(char));
         if (fgets(buf + l, buf_len - l, stdin) == NULL)
+
             return buf;
     } while (1);
 }
 
 /* Split the string in words, according to the simple shell grammar. */
-static char** split_in_words(char* line)
-{
-    char* cur = line;
-    char** tab = 0;
+static char **split_in_words(char *line) {
+    char *cur = line;
+    char **tab = 0;
     size_t l = 0;
     char c;
 
     while ((c = *cur) != 0) {
-        char* w = 0;
-        char* start;
+        char *w = 0;
+        char *start;
         switch (c) {
         case ' ':
         case '\t':
@@ -120,21 +115,20 @@ static char** split_in_words(char* line)
             w[cur - start] = 0;
         }
         if (w) {
-            tab = xrealloc(tab, (l + 1) * sizeof(char*));
+            tab = xrealloc(tab, (l + 1) * sizeof(char *));
             tab[l++] = w;
         }
     }
-    tab = xrealloc(tab, (l + 1) * sizeof(char*));
+    tab = xrealloc(tab, (l + 1) * sizeof(char *));
     tab[l++] = 0;
     return tab;
 }
 
-static void freeseq(char*** seq)
-{
+static void freeseq(char ***seq) {
     int i, j;
 
     for (i = 0; seq[i] != 0; i++) {
-        char** cmd = seq[i];
+        char **cmd = seq[i];
 
         for (j = 0; cmd[j] != 0; j++)
             free(cmd[j]);
@@ -144,8 +138,7 @@ static void freeseq(char*** seq)
 }
 
 /* Free the fields of the structure but not the structure itself */
-static void freecmd(struct cmdline* s)
-{
+static void freecmd(struct cmdline *s) {
     if (s->in)
         free(s->in);
     if (s->out)
@@ -155,16 +148,15 @@ static void freecmd(struct cmdline* s)
         freeseq(s->seq);
 }
 
-struct cmdline* readcmd(void)
-{
-    static struct cmdline* static_cmdline = 0;
-    struct cmdline* s = static_cmdline;
-    char* line;
-    char** words;
+struct cmdline *readcmd(void) {
+    static struct cmdline *static_cmdline = 0;
+    struct cmdline *s = static_cmdline;
+    char *line;
+    char **words;
     int i;
-    char* w;
-    char** cmd;
-    char*** seq;
+    char *w;
+    char **cmd;
+    char ***seq;
     size_t cmd_len, seq_len;
 
     line = readline();
@@ -176,16 +168,15 @@ struct cmdline* readcmd(void)
         return static_cmdline = 0;
     }
 
-    cmd = xmalloc(sizeof(char*));
+    cmd = xmalloc(sizeof(char *));
     cmd[0] = 0;
     cmd_len = 0;
-    seq = xmalloc(sizeof(char**));
+    seq = xmalloc(sizeof(char **));
     seq[0] = 0;
     seq_len = 0;
 
     words = split_in_words(line);
     free(line);
-
     if (!s)
         static_cmdline = s = xmalloc(sizeof(struct cmdline));
     else
@@ -237,30 +228,32 @@ struct cmdline* readcmd(void)
                 goto error;
             }
 
-            seq = xrealloc(seq, (seq_len + 2) * sizeof(char**));
+            seq = xrealloc(seq, (seq_len + 2) * sizeof(char **));
             seq[seq_len++] = cmd;
             seq[seq_len] = 0;
 
-            cmd = xmalloc(sizeof(char*));
+            cmd = xmalloc(sizeof(char *));
             cmd[0] = 0;
             cmd_len = 0;
             break;
         default:
-            cmd = xrealloc(cmd, (cmd_len + 2) * sizeof(char*));
+            cmd = xrealloc(cmd, (cmd_len + 2) * sizeof(char *));
             cmd[cmd_len++] = w;
             cmd[cmd_len] = 0;
         }
     }
 
     if (cmd_len != 0) {
-        seq = xrealloc(seq, (seq_len + 2) * sizeof(char**));
+        seq = xrealloc(seq, (seq_len + 2) * sizeof(char **));
         seq[seq_len++] = cmd;
         seq[seq_len] = 0;
-    } else if (seq_len != 0) {
+    }
+    else if (seq_len != 0) {
         s->err = "misplaced pipe";
         i--;
         goto error;
-    } else
+    }
+    else
         free(cmd);
     free(words);
     s->seq = seq;
