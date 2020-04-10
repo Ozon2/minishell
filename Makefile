@@ -1,8 +1,7 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -pedantic
-LDFLAGS =
-
-all: minishell
+CC=gcc
+CFLAGS=-Wall -Wextra -pedantic -g
+LDFLAGS=
+EXEC=minishell
 
 minishell: readcmd.o minishell.o 
 	$(CC) $(LDFLAGS) $^ -o $@
@@ -11,9 +10,9 @@ depend:
 	makedepend *.c -Y.
 
 clean:
-	rm *.o minishell
+	rm *.o $(EXEC)
 
-.PHONY: all depend clean 
+.PHONY: depend clean 
 
 # DO NOT DELETE
 
