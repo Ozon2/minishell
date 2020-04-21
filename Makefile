@@ -3,7 +3,7 @@ CFLAGS=-Wall -Wextra -pedantic -g
 LDFLAGS=
 EXEC=minishell
 
-minishell: readcmd.o minishell.o 
+minishell: readcmd.o builtins.o proclist.o minishell.o 
 	$(CC) $(LDFLAGS) $^ -o $@
 
 depend:
@@ -16,5 +16,7 @@ clean:
 
 # DO NOT DELETE
 
-minishell.o: readcmd.h
+builtins.o: builtins.h readcmd.h debug.h
+minishell.o: builtins.h readcmd.h debug.h proclist.h
+proclist.o: proclist.h
 readcmd.o: readcmd.h

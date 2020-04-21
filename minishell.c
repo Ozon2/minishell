@@ -1,17 +1,7 @@
-#define DEBUG 0
+/*
+ * A minimalist command line interface between the user and the operating system
+ */
 
-#if defined(DEBUG) && DEBUG > 0
-#define DEBUG_PRINTF(fmt, ...)                                                                     \
-    fprintf(stderr, "\033[0;31m[DEBUG]\033[0m: %s:%d:%s(): " fmt, __FILE__, __LINE__, __func__,    \
-            __VA_ARGS__)
-#define DEBUG_PRINT(fmt)                                                                           \
-    fprintf(stderr, "\033[0;31m[DEBUG]\033[0m: %s:%d:%s(): " fmt, __FILE__, __LINE__, __func__)
-#else
-#define DEBUG_PRINTF(fmt, ...) // Don't do anything if not in debug mode
-#define DEBUG_PRINT(fmt)
-#endif
-
-#include "readcmd.h"
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -20,13 +10,22 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "builtins.h"
+#include "debug.h"
+#include "proclist.h"
+#include "readcmd.h"
+
 // Minishell prompt
 #define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
 
 struct cmdline *cmd;
 
 /*
- * Execute an external command, a subprocess will be forked
+ * Function: execExternalCommand
+ * -----------------------------
+ *   Execute an external command, a subprocess will be forked
+ *
+ *   cmd: the command to execute
  */
 void execExternalCommand(struct cmdline *cmd) {
     int pidFork, wstatus;
@@ -52,16 +51,14 @@ void execExternalCommand(struct cmdline *cmd) {
                          getpid());
             // Wait for the child to display the command's results
             waitpid(pidFork, &wstatus, 0);
-            if
-                WIFEXITED(wstatus) { /* fils terminé avec exit */
-                    DEBUG_PRINTF("[%d] Child process ended with exit %d\n", getpid(),
-                                 WEXITSTATUS(wstatus));
-                }
-            else if
-                WIFSIGNALED(wstatus) { /* fils tué par un signal */
-                    DEBUG_PRINTF("[%d] Child process killed by signal %d\n", getpid(),
-                                 WTERMSIG(wstatus));
-                }
+            if WIFEXITED (wstatus) { // Child ended with exit
+                DEBUG_PRINTF("[%d] Child process ended with exit %d\n", getpid(),
+                             WEXITSTATUS(wstatus));
+            }
+            else if WIFSIGNALED (wstatus) { // Child ended by a signal
+                DEBUG_PRINTF("[%d] Child process killed by signal %d\n", getpid(),
+                             WTERMSIG(wstatus));
+            }
         }
         else {
             printf("[1] %d\n", pidFork);
@@ -72,39 +69,11 @@ void execExternalCommand(struct cmdline *cmd) {
 }
 
 /*
- * Change the current directory
- * If an empty string is given, change the current directory to the environment variable HOME
- */
-void changeDirectory(char *newDir) {
-    DEBUG_PRINT("Executing built-in command 'cd'\n");
-    if (newDir == NULL) { // No arguments given to cd
-        char *HOME = getenv("HOME");
-        DEBUG_PRINT("cd: Changing current directory to HOME\n");
-        setenv("PWD", HOME, true);
-        chdir(HOME);
-    }
-    else {
-        DEBUG_PRINTF("cd: Trying to change current directory to %s\n", newDir);
-        if (chdir(newDir) != -1) {
-            setenv("PWD", newDir, true);
-        }
-        else {
-            printf("minishell: cd: %s: No such file or directory\n", newDir);
-        }
-    }
-}
-
-/*
- * Exit the shell
- */
-void exitShell(struct cmdline *cmd) {
-    freecmd(cmd);
-    free(cmd);
-    exit(0);
-}
-
-/*
- * Treat a given command
+ * Function: treatCommand
+ * ----------------------
+ *   Treat a given command
+ *
+ *   cmd: the command to treat
  */
 void treatCommand(struct cmdline *cmd) {
     char *cmdName = cmd->seq[0][0];
