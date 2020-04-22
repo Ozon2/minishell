@@ -1,0 +1,6 @@
+cd /
+ls
+cd /home/ozon/1SN/sec/minishell
+
+sleep 1
+exit

@@ -92,13 +92,17 @@ void treatCommand(struct cmdline *cmd) {
 int main() {
     // Main loop
     while (true) {
+        // Show the prompt
         printf(PS1, getenv("USER"), getenv("PWD"));
-        cmd = readcmd();   // Read a line from standard input
+        fflush(stdout);
+
+        // Read a command from standard input and execute it
+        cmd = readcmd();
         if (cmd == NULL) { // Exit if CTRL+D is pressed to avoid infinite loop
-            DEBUG_PRINT("CTRL+D entered, exiting ...\n");
+            DEBUG_PRINT("CTRL+D entered\n");
             exitShell(cmd);
         }
-        else if (*(cmd->seq) == NULL) { // Handle empty line
+        else if (cmd->seq == NULL || *(cmd->seq) == NULL) { // Handle empty line
             DEBUG_PRINT("Empty line entered\n");
         }
         else {

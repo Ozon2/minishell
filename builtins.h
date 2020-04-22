@@ -22,6 +22,6 @@ void changeDirectory(char *newDir);
  *
  *   cmd: the last command read
  */
-void exitShell(struct cmdline *cmd);
+void exitShell();
 
 #endif

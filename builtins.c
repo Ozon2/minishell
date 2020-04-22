@@ -24,8 +24,7 @@ void changeDirectory(char *newDir) {
     }
 }
 
-void exitShell(struct cmdline *cmd) {
-    freecmd(cmd);
-    free(cmd);
+void exitShell() {
+    DEBUG_PRINT("exit: exiting shell ...\n");
     exit(0);
 }
