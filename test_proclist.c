@@ -3,22 +3,27 @@
 
 #include "proclist.h"
 
-void fillList(t_proc *head) {
-    addProcess(head, 1279, "ls");
-    addProcess(head, 1358, "sleep");
-    addProcess(head, 1423, "echo");
-    addProcess(head, 1428, "cat");
-    addProcess(head, 1507, "vim");
+void fillList(proc_t *head) {
+    char *cmd1[] = {"ls", "-l", NULL};
+    char *cmd2[] = {"echo", "2", NULL};
+    char *cmd3[] = {"sleep", "1000", NULL};
+    char *cmd4[] = {"cat", "proclist.h", NULL};
+    char *cmd5[] = {"vim", "minishell.c", "this command is too long and will exceed the max size",
+                    NULL};
+    addProcess(head, 1279, cmd1);
+    addProcess(head, 1358, cmd2);
+    addProcess(head, 1423, cmd3);
+    addProcess(head, 1428, cmd4);
+    addProcess(head, 1507, cmd5);
 }
 
 void test_addProcess() {
     printf("Test addProcess\n");
-    t_proc *head = (t_proc *)malloc(sizeof(head));
+    proc_t *head = initProcList();
     if (head == NULL) {
         perror("malloc");
         exit(1);
     }
-    *head = NULL;
 
     fillList(head);
     printProcList(head);
@@ -27,12 +32,11 @@ void test_addProcess() {
 
 void test_removeProcess() {
     printf("Test removeProcess\n");
-    t_proc *head = (t_proc *)malloc(sizeof(head));
+    proc_t *head = initProcList();
     if (head == NULL) {
         perror("malloc");
         exit(1);
     }
-    *head = NULL;
 
     fillList(head);
     printProcList(head);

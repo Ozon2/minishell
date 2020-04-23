@@ -18,8 +18,6 @@
 // Minishell prompt
 #define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
 
-struct cmdline *cmd;
-
 /*
  * Function: execExternalCommand
  * -----------------------------
@@ -27,7 +25,7 @@ struct cmdline *cmd;
  *
  *   cmd: the command to execute
  */
-void execExternalCommand(struct cmdline *cmd) {
+void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
     int pidFork, wstatus;
 
     fflush(stdout);   // Flush stdout to give an empty buffer to the child process
@@ -42,11 +40,17 @@ void execExternalCommand(struct cmdline *cmd) {
 
         DEBUG_PRINTF("[%d] Executing command '%s'\n", getpid(), cmd->seq[0][0]);
         execvp(cmd->seq[0][0], cmd->seq[0]);
-        printf("Unknown command\n"); // If execvp returns, it has failed
+        printf("Unknown command\n"); // If execvp returns, the command failed
         exit(1);
     }
     else { // Parent process
-        if (!cmd->backgrounded) {
+        if (cmd->backgrounded) {
+            int newID = addProcess(procList, pidFork, cmd->seq[0]);
+            printf("[%d] %d\n", newID, pidFork);
+            DEBUG_PRINTF("[%d] Parent process started a child process in the background\n",
+                         getpid());
+        }
+        else {
             DEBUG_PRINTF("[%d] Parent process waiting for the end of its child process\n",
                          getpid());
             // Wait for the child to display the command's results
@@ -60,11 +64,6 @@ void execExternalCommand(struct cmdline *cmd) {
                              WTERMSIG(wstatus));
             }
         }
-        else {
-            printf("[1] %d\n", pidFork);
-            DEBUG_PRINTF("\n[%d] Parent process started a child process in the background\n",
-                         getpid());
-        }
     }
 }
 
@@ -75,21 +74,28 @@ void execExternalCommand(struct cmdline *cmd) {
  *
  *   cmd: the command to treat
  */
-void treatCommand(struct cmdline *cmd) {
+void treatCommand(struct cmdline *cmd, proc_t *procList) {
     char *cmdName = cmd->seq[0][0];
     if (!strcmp(cmdName, "cd")) {
         char *newDir = cmd->seq[0][1];
-        changeDirectory(newDir);
+        cd(newDir);
     }
     else if (!strcmp(cmdName, "exit")) {
-        exitShell(cmd);
+        exitShell(procList);
+    }
+    else if (!strcmp(cmdName, "list")) {
+        list(procList);
     }
     else {
-        execExternalCommand(cmd);
+        execExternalCommand(cmd, procList);
     }
 }
 
 int main() {
+    // Create the process list
+    proc_t *procList = initProcList();
+
+    struct cmdline *cmd;
     // Main loop
     while (true) {
         // Show the prompt
@@ -100,14 +106,14 @@ int main() {
         cmd = readcmd();
         if (cmd == NULL) { // Exit if CTRL+D is pressed to avoid infinite loop
             DEBUG_PRINT("CTRL+D entered\n");
-            exitShell(cmd);
+            exitShell(procList);
         }
         else if (cmd->seq == NULL || *(cmd->seq) == NULL) { // Handle empty line
             DEBUG_PRINT("Empty line entered\n");
         }
         else {
             DEBUG_PRINTF("Treating command '%s'\n", cmd->seq[0][0]);
-            treatCommand(cmd);
+            treatCommand(cmd, procList);
         }
     }
 }

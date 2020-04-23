@@ -1,6 +1,9 @@
-cd /
-ls
-cd /home/ozon/1SN/sec/minishell
-
-sleep 1
+sleep 100&
+sleep 1&
+sleep 300&
+list
+sleep 2
+list
+sleep 400 &
+list
 exit

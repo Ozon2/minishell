@@ -20,4 +20,6 @@
 #define DEBUG_PRINT(fmt)
 #endif
 
+void *safe_malloc(size_t n);
+
 #endif
