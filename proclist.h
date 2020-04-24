@@ -121,18 +121,29 @@ void printProcList(proc_t *head);
  *   lastID: (out) the ID of the last modified process found (0 if not found)
  *   previousID: (out) the ID of the second-to-last modified process found (0 if not found)
  */
-void getTwoLastProcesses(proc_t *head, int *lastID, int *previousID);
+void getLastTwoProcesses(proc_t *head, int *lastID, int *previousID);
 
 /*
- * Function: changeStatus
- * ----------------------
+ * Function: setProcessStatusByPID
+ * -------------------------------
  *   Change the status of a process
  *
  *   head: a pointer to the the head of the list
  *   pid: the PID of the process
  *   status: the new status
  */
-void changeStatus(proc_t *head, int pid, state status);
+void setProcessStatusByPID(proc_t *head, int pid, state status);
+
+/*
+ * Function: setProcessStatusByID
+ * -------------------------------
+ *   Change the status of a process
+ *
+ *   head: a pointer to the the head of the list
+ *   id: the ID of the process
+ *   status: the new status
+ */
+void setProcessStatusByID(proc_t *head, int id, state status);
 
 /*
  * Function: updateProcList
@@ -142,6 +153,30 @@ void changeStatus(proc_t *head, int pid, state status);
  *   head: a pointer to the the head of the list
  */
 void updateProcList(proc_t *head);
+
+/*
+ * Function: getID
+ * ---------------
+ *   Get the ID of a process from its PID
+ *
+ *   head: a pointer to the the head of the list
+ *   pid: the PID of the process
+ *
+ *   Return: the ID of the process (or 0 if it was not found)
+ */
+int getID(proc_t *head, int pid);
+
+/*
+ * Function: getPID
+ * ---------------
+ *   Get the PID of a process from its ID
+ *
+ *   head: a pointer to the the head of the list
+ *   id: the ID of the process
+ *
+ *   Return: the PID of the process (or 0 if it was not found)
+ */
+int getPID(proc_t *head, int id);
 
 /*
  * Function: deleteProcList

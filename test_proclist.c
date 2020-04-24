@@ -33,10 +33,6 @@ void test_addProcess() {
 void test_removeProcess() {
     printf("Test removeProcess\n");
     proc_t *head = initProcList();
-    if (head == NULL) {
-        perror("malloc");
-        exit(1);
-    }
 
     fillList(head);
     printProcList(head);
@@ -63,8 +59,38 @@ void test_removeProcess() {
     deleteProcList(head);
 }
 
+void test_updateStatus() {
+    printf("Test updateStatus\n");
+    proc_t *head = initProcList();
+
+    fillList(head);
+    printProcList(head);
+
+    printf("Set process 2 SUSPENDED\n");
+    setProcessStatusByID(head, 2, SUSPENDED);
+    printProcList(head);
+
+    printf("Set process 1 DONE\n");
+    setProcessStatusByID(head, 1, DONE);
+    printProcList(head);
+
+    printf("Set process 2 ACTIVE\n");
+    setProcessStatusByID(head, 2, ACTIVE);
+    printProcList(head);
+
+    printf("Set process 5 SUSPENDED\n");
+    setProcessStatusByID(head, 5, SUSPENDED);
+    printProcList(head);
+
+    printf("Set process 1 ACTIVE\n");
+    setProcessStatusByID(head, 1, ACTIVE);
+    printProcList(head);
+    deleteProcList(head);
+}
+
 int main() {
     test_addProcess();
     test_removeProcess();
+    test_updateStatus();
     return 0;
 }

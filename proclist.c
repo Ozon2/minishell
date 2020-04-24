@@ -105,34 +105,8 @@ void removeProcessByID(proc_t *head, int id) {
 }
 
 void removeProcessByPID(proc_t *head, int pid) {
-    if (*head == NULL) {
-        return; // Don't do anything if the list is empty
-    }
-
-    if ((*head)->pid == pid) {
-        // Remove the first process of the list
-        proc_t next = (*head)->next;
-        free((*head)->commandName);
-        free(*head);
-        *head = next;
-        DEBUG_PRINTF("Process %d removed\n", pid);
-        return;
-    }
-
-    // Remove a process that is not the first in the list
-    proc_t current = *head;
-    while (current->next != NULL && current->next->pid != pid) {
-        current = current->next;
-    }
-    if (current->next != NULL) {
-        proc_t tmp = current->next;
-        current->next = tmp->next;
-        free(tmp->commandName);
-        free(tmp);
-        DEBUG_PRINTF("Process %d removed\n", pid);
-        return;
-    }
-    DEBUG_PRINTF("Process %d not found\n", pid);
+    int id = getID(head, pid);
+    removeProcessByID(head, id);
 }
 
 void printProcess(proc_t proc, int lastID, int previousID) {
@@ -163,7 +137,6 @@ void printProcess(proc_t proc, int lastID, int previousID) {
 }
 
 void printProcList(proc_t *head) {
-    printf("\nProcess list:\n");
     if (*head == NULL) { // Empty list
         printf("\n");
         return;
@@ -171,7 +144,8 @@ void printProcList(proc_t *head) {
 
     // Get the last two processes
     int lastID, previousID;
-    getTwoLastProcesses(head, &lastID, &previousID);
+    getLastTwoProcesses(head, &lastID, &previousID);
+    DEBUG_PRINTF("Last two processes: last=%d and previous=%d\n", lastID, previousID);
 
     // Loop trough each process in the list
     proc_t current = *head;
@@ -183,12 +157,20 @@ void printProcList(proc_t *head) {
     printf("\n");
 }
 
-void getTwoLastProcesses(proc_t *head, int *lastID, int *previousID) {
+void getLastTwoProcesses(proc_t *head, int *lastID, int *previousID) {
+    *lastID = 0;
+    *previousID = 0;
+    if (*head == NULL) {
+        return;
+    }
     proc_t current = *head;
     proc_t last = *head;
-    *lastID = 0;
-    proc_t previous = *head;
-    *previousID = 0;
+    *lastID = current->id;
+    proc_t previous = current->next;
+    if (previous != NULL) {
+        *previousID = previous->id;
+    }
+
     while (current != NULL) {
         // current time > last time
         if (current->time.tv_sec >= last->time.tv_sec &&
@@ -199,8 +181,9 @@ void getTwoLastProcesses(proc_t *head, int *lastID, int *previousID) {
             last = current;
             *lastID = current->id;
         }
-        // current time > previous time
-        else if (current->time.tv_sec >= previous->time.tv_sec &&
+        // current != last && current time > previous time
+        else if (previous != NULL && current != last &&
+                 current->time.tv_sec >= previous->time.tv_sec &&
                  current->time.tv_usec > previous->time.tv_usec) {
             // Update previous
             previous = current;
@@ -210,11 +193,12 @@ void getTwoLastProcesses(proc_t *head, int *lastID, int *previousID) {
     }
 }
 
-void changeStatus(proc_t *head, int pid, state status) {
+void setProcessStatusByPID(proc_t *head, int pid, state status) {
     proc_t current = *head;
     while (current != NULL) {
         if (current->pid == pid) {
             current->state = status;
+            gettimeofday(&(current->time), NULL);
             DEBUG_PRINTF("[%d] Status changed\n", pid);
             return;
         }
@@ -223,13 +207,18 @@ void changeStatus(proc_t *head, int pid, state status) {
     DEBUG_PRINTF("[%d] Process not found in the list\n", pid);
 }
 
+void setProcessStatusByID(proc_t *head, int id, state status) {
+    int pid = getPID(head, id);
+    setProcessStatusByPID(head, pid, status);
+}
+
 void updateProcList(proc_t *head) {
     proc_t current = *head;
     proc_t next;
 
     // Get the last two processes
     int lastID, previousID;
-    getTwoLastProcesses(head, &lastID, &previousID);
+    getLastTwoProcesses(head, &lastID, &previousID);
 
     while (current != NULL) {
         next = current->next;
@@ -239,6 +228,28 @@ void updateProcList(proc_t *head) {
         }
         current = next;
     }
+}
+
+int getID(proc_t *head, int pid) {
+    proc_t current = *head;
+    while (current != NULL) {
+        if (current->pid == pid) {
+            return current->id;
+        }
+        current = current->next;
+    }
+    return 0;
+}
+
+int getPID(proc_t *head, int id) {
+    proc_t current = *head;
+    while (current != NULL) {
+        if (current->id == id) {
+            return current->pid;
+        }
+        current = current->next;
+    }
+    return 0;
 }
 
 void deleteProcList(proc_t *head) {

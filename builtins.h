@@ -13,8 +13,10 @@
  * ------------
  *   Change the current directory, if an empty string is given,
  *   the current directory changed to the environment variable HOME
+ *
+ *   cmd: the command line
  */
-void cd(char *newDir);
+void cd(struct cmdline *cmd);
 
 /*
  * Function: exitShell
@@ -41,5 +43,35 @@ void exitShell(proc_t *procList);
  *   procList: the process list
  */
 void list(proc_t *procList);
+
+/*
+ * Function: stop
+ * --------------
+ *   Suspend a process
+ *
+ *   cmd: the command line
+ *   procList: the process list
+ */
+void stop(struct cmdline *cmd, proc_t *procList);
+
+/*
+ * Function: bg
+ * ------------
+ *   Resume a background process
+ *
+ *   cmd: the command line
+ *   procList: the process list
+ */
+void bg(struct cmdline *cmd, proc_t *procList);
+
+/*
+ * Function: fg
+ * ------------
+ *   Take to foreground and resume a background process
+ *
+ *   cmd: the command line
+ *   procList: the process list
+ */
+void fg(struct cmdline *cmd, proc_t *procList);
 
 #endif

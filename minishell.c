@@ -2,6 +2,11 @@
  * A minimalist command line interface between the user and the operating system
  */
 
+#define _GNU_SOURCE /* WCONTINUED */
+
+// Minishell prompt
+#define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
+
 #include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -15,9 +20,6 @@
 #include "debug.h"
 #include "proclist.h"
 #include "readcmd.h"
-
-// Minishell prompt
-#define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
 
 // Global variables
 proc_t *procList;
@@ -72,14 +74,22 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
 void treatCommand(struct cmdline *cmd, proc_t *procList) {
     char *cmdName = cmd->seq[0][0];
     if (!strcmp(cmdName, "cd")) {
-        char *newDir = cmd->seq[0][1];
-        cd(newDir);
+        cd(cmd);
     }
     else if (!strcmp(cmdName, "exit")) {
         exitShell(procList);
     }
     else if (!strcmp(cmdName, "list") || !strcmp(cmdName, "jobs")) {
         list(procList);
+    }
+    else if (!strcmp(cmdName, "stop")) {
+        stop(cmd, procList);
+    }
+    else if (!strcmp(cmdName, "bg")) {
+        bg(cmd, procList);
+    }
+    else if (!strcmp(cmdName, "fg")) {
+        fg(cmd, procList);
     }
     else {
         execExternalCommand(cmd, procList);
@@ -102,13 +112,15 @@ void childHandler() {
         else if (childPID > 0) {
             if (WIFSTOPPED(childState)) {
                 DEBUG_PRINTF("[%d] Child stopped by signal %d\n", childPID, WSTOPSIG(childState));
+                setProcessStatusByPID(procList, childPID, SUSPENDED);
             }
             else if (WIFCONTINUED(childState)) {
                 DEBUG_PRINTF("[%d] Child resumed\n", childPID);
+                setProcessStatusByPID(procList, childPID, ACTIVE);
             }
             else if (WIFEXITED(childState)) {
                 DEBUG_PRINTF("[%d] Child exited, status=%d\n", childPID, WEXITSTATUS(childState));
-                changeStatus(procList, childPID, DONE);
+                setProcessStatusByPID(procList, childPID, DONE);
             }
             else if (WIFSIGNALED(childState)) {
                 DEBUG_PRINTF("[%d] Child killed by signal %d\n", childPID, WTERMSIG(childState));
@@ -134,6 +146,7 @@ int main() {
 
         // Read a command from standard input and execute it
         cmd = readcmd();
+        // Print terminated processes and delete them from the list
         updateProcList(procList);
         if (cmd == NULL) { // Exit if CTRL+D is pressed to avoid infinite loop
             DEBUG_PRINT("CTRL+D entered\n");
