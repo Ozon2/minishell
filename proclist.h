@@ -71,15 +71,37 @@ int addProcess(proc_t *head, int pid, char **commandName);
 int lengthProcList(proc_t *head);
 
 /*
- * Function: removeProcess
- * -----------------------
+ * Function: removeProcessByID
+ * ---------------------------
  *   Remove a process from the list, if the process is not present
  *   in the list, the function does nothing
  *
  *   head: a pointer to the the head of the list
  *   id: ID of the process to remove
  */
-void removeProcess(proc_t *head, int id);
+void removeProcessByID(proc_t *head, int id);
+
+/*
+ * Function: removeProcessByPID
+ * ----------------------------
+ *   Remove a process from the list, if the process is not present
+ *   in the list, the function does nothing
+ *
+ *   head: a pointer to the the head of the list
+ *   pid: PID of the process to remove
+ */
+void removeProcessByPID(proc_t *head, int id);
+
+/*
+ * Function: printProcess
+ * ----------------------
+ *   Print the information about a process
+ *
+ *   head: a pointer to the the head of the list
+ *   lastID: ID of the last modified process
+ *   previousID: ID of the second-to-last modified process
+ */
+void printProcess(proc_t proc, int lastID, int previousID);
 
 /*
  * Function: printProcList
@@ -100,6 +122,26 @@ void printProcList(proc_t *head);
  *   previousID: (out) the ID of the second-to-last modified process found (0 if not found)
  */
 void getTwoLastProcesses(proc_t *head, int *lastID, int *previousID);
+
+/*
+ * Function: changeStatus
+ * ----------------------
+ *   Change the status of a process
+ *
+ *   head: a pointer to the the head of the list
+ *   pid: the PID of the process
+ *   status: the new status
+ */
+void changeStatus(proc_t *head, int pid, state status);
+
+/*
+ * Function: updateProcList
+ * ------------------------
+ *   Print and remove from the list the completed processes
+ *
+ *   head: a pointer to the the head of the list
+ */
+void updateProcList(proc_t *head);
 
 /*
  * Function: deleteProcList

@@ -42,19 +42,19 @@ void test_removeProcess() {
     printProcList(head);
 
     printf("Removing id 3\n");
-    removeProcess(head, 3);
+    removeProcessByID(head, 3);
     printProcList(head);
 
     printf("Removing id 3 again\n");
-    removeProcess(head, 3);
+    removeProcessByID(head, 3);
     printProcList(head);
 
     printf("Removing id 5\n");
-    removeProcess(head, 5);
+    removeProcessByID(head, 5);
     printProcList(head);
 
     printf("Removing id 1\n");
-    removeProcess(head, 1);
+    removeProcessByID(head, 1);
     printProcList(head);
 
     printf("Adding 5 more process\n");

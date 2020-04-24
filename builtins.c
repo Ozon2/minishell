@@ -28,7 +28,7 @@ void cd(char *newDir) {
 void exitShell(proc_t *procList) {
     DEBUG_PRINT("exit: exiting shell ...\n");
     deleteProcList(procList);
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 void list(proc_t *procList) {
@@ -38,7 +38,7 @@ void list(proc_t *procList) {
         return;
     }
 
-    // Get the two last processes
+    // Get the last two processes
     int lastID, previousID;
     getTwoLastProcesses(procList, &lastID, &previousID);
 
@@ -62,8 +62,11 @@ void list(proc_t *procList) {
         if (current->state == SUSPENDED) {
             printf("Stopped\t\t      ");
         }
-        else {
+        else if (current->state == ACTIVE) {
             printf("Running\t\t      ");
+        }
+        else {
+            printf("Done\t\t      ");
         }
         // Print the command executed by the process
         printf("%s\n", current->commandName);
@@ -71,5 +74,4 @@ void list(proc_t *procList) {
         // Go to the next process
         current = current->next;
     }
-    printf("\n");
 }

@@ -73,7 +73,7 @@ int lengthProcList(proc_t *head) {
     return n;
 }
 
-void removeProcess(proc_t *head, int id) {
+void removeProcessByID(proc_t *head, int id) {
     if (*head == NULL) {
         return; // Don't do anything if the list is empty
     }
@@ -84,6 +84,7 @@ void removeProcess(proc_t *head, int id) {
         free((*head)->commandName);
         free(*head);
         *head = next;
+        DEBUG_PRINTF("Process %d removed\n", id);
         return;
     }
 
@@ -97,7 +98,68 @@ void removeProcess(proc_t *head, int id) {
         current->next = tmp->next;
         free(tmp->commandName);
         free(tmp);
+        DEBUG_PRINTF("Process %d removed\n", id);
+        return;
     }
+    DEBUG_PRINTF("Process %d not found\n", id);
+}
+
+void removeProcessByPID(proc_t *head, int pid) {
+    if (*head == NULL) {
+        return; // Don't do anything if the list is empty
+    }
+
+    if ((*head)->pid == pid) {
+        // Remove the first process of the list
+        proc_t next = (*head)->next;
+        free((*head)->commandName);
+        free(*head);
+        *head = next;
+        DEBUG_PRINTF("Process %d removed\n", pid);
+        return;
+    }
+
+    // Remove a process that is not the first in the list
+    proc_t current = *head;
+    while (current->next != NULL && current->next->pid != pid) {
+        current = current->next;
+    }
+    if (current->next != NULL) {
+        proc_t tmp = current->next;
+        current->next = tmp->next;
+        free(tmp->commandName);
+        free(tmp);
+        DEBUG_PRINTF("Process %d removed\n", pid);
+        return;
+    }
+    DEBUG_PRINTF("Process %d not found\n", pid);
+}
+
+void printProcess(proc_t proc, int lastID, int previousID) {
+    // Print the ID of the process
+    printf("[%d]", proc->id);
+    // Print a special character if the process is the last or second-to-last modified
+    if (proc->id == lastID) {
+        printf("+  ");
+    }
+    else if (proc->id == previousID) {
+        printf("-  ");
+    }
+    else {
+        printf("   ");
+    }
+    // Print the state of the process
+    if (proc->state == SUSPENDED) {
+        printf("Stopped\t\t      ");
+    }
+    else if (proc->state == ACTIVE) {
+        printf("Running\t\t      ");
+    }
+    else {
+        printf("Done\t\t      ");
+    }
+    // Print the command executed by the process
+    printf("%s\n", proc->commandName);
 }
 
 void printProcList(proc_t *head) {
@@ -107,26 +169,16 @@ void printProcList(proc_t *head) {
         return;
     }
 
+    // Get the last two processes
+    int lastID, previousID;
+    getTwoLastProcesses(head, &lastID, &previousID);
+
     // Loop trough each process in the list
     proc_t current = *head;
     while (current != NULL) {
-
         // Print the information about the process
-        printf("ID: %d\n", current->id);
-        printf("PID: %d\n", current->pid);
-        printf("Command: %s\n", current->commandName);
-        if (current->state == SUSPENDED) {
-            printf("State: SUSPENDED\n");
-        }
-        else {
-            printf("State: ACTIVE\n");
-        }
-        // Temps en microsecondes
-        printf("Time: %luus\n", current->time.tv_sec * 1000000 + current->time.tv_usec);
-
-        // Go to the next process
+        printProcess(current, lastID, previousID);
         current = current->next;
-        printf("\n");
     }
     printf("\n");
 }
@@ -155,6 +207,37 @@ void getTwoLastProcesses(proc_t *head, int *lastID, int *previousID) {
             *previousID = current->id;
         }
         current = current->next;
+    }
+}
+
+void changeStatus(proc_t *head, int pid, state status) {
+    proc_t current = *head;
+    while (current != NULL) {
+        if (current->pid == pid) {
+            current->state = status;
+            DEBUG_PRINTF("[%d] Status changed\n", pid);
+            return;
+        }
+        current = current->next;
+    }
+    DEBUG_PRINTF("[%d] Process not found in the list\n", pid);
+}
+
+void updateProcList(proc_t *head) {
+    proc_t current = *head;
+    proc_t next;
+
+    // Get the last two processes
+    int lastID, previousID;
+    getTwoLastProcesses(head, &lastID, &previousID);
+
+    while (current != NULL) {
+        next = current->next;
+        if (current->state == DONE) {
+            printProcess(current, lastID, previousID);
+            removeProcessByID(head, current->id);
+        }
+        current = next;
     }
 }
 

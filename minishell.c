@@ -2,6 +2,7 @@
  * A minimalist command line interface between the user and the operating system
  */
 
+#include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -18,6 +19,9 @@
 // Minishell prompt
 #define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
 
+// Global variables
+proc_t *procList;
+
 /*
  * Function: execExternalCommand
  * -----------------------------
@@ -32,13 +36,12 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
     pidFork = fork(); // Make a child process to execute the command
 
     if (pidFork < 0) {
-
         perror("fork");
         exit(1);
     }
     else if (pidFork == 0) { // Child process
 
-        DEBUG_PRINTF("[%d] Executing command '%s'\n", getpid(), cmd->seq[0][0]);
+        DEBUG_PRINTF("[%d] Child process executing command '%s'\n", getpid(), cmd->seq[0][0]);
         execvp(cmd->seq[0][0], cmd->seq[0]);
         printf("Unknown command\n"); // If execvp returns, the command failed
         exit(1);
@@ -55,14 +58,6 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
                          getpid());
             // Wait for the child to display the command's results
             waitpid(pidFork, &wstatus, 0);
-            if WIFEXITED (wstatus) { // Child ended with exit
-                DEBUG_PRINTF("[%d] Child process ended with exit %d\n", getpid(),
-                             WEXITSTATUS(wstatus));
-            }
-            else if WIFSIGNALED (wstatus) { // Child ended by a signal
-                DEBUG_PRINTF("[%d] Child process killed by signal %d\n", getpid(),
-                             WTERMSIG(wstatus));
-            }
         }
     }
 }
@@ -83,7 +78,7 @@ void treatCommand(struct cmdline *cmd, proc_t *procList) {
     else if (!strcmp(cmdName, "exit")) {
         exitShell(procList);
     }
-    else if (!strcmp(cmdName, "list")) {
+    else if (!strcmp(cmdName, "list") || !strcmp(cmdName, "jobs")) {
         list(procList);
     }
     else {
@@ -91,9 +86,44 @@ void treatCommand(struct cmdline *cmd, proc_t *procList) {
     }
 }
 
+/*
+ * Function: childHandler
+ * ----------------------
+ *   Handle SIGCHLD
+ */
+void childHandler() {
+    int childState, childPID;
+    do {
+        childPID = (int)waitpid(-1, &childState, WNOHANG | WUNTRACED | WCONTINUED);
+        if ((childPID == -1) && (errno != ECHILD)) {
+            perror("waitpid");
+            exit(EXIT_FAILURE);
+        }
+        else if (childPID > 0) {
+            if (WIFSTOPPED(childState)) {
+                DEBUG_PRINTF("[%d] Child stopped by signal %d\n", childPID, WSTOPSIG(childState));
+            }
+            else if (WIFCONTINUED(childState)) {
+                DEBUG_PRINTF("[%d] Child resumed\n", childPID);
+            }
+            else if (WIFEXITED(childState)) {
+                DEBUG_PRINTF("[%d] Child exited, status=%d\n", childPID, WEXITSTATUS(childState));
+                changeStatus(procList, childPID, DONE);
+            }
+            else if (WIFSIGNALED(childState)) {
+                DEBUG_PRINTF("[%d] Child killed by signal %d\n", childPID, WTERMSIG(childState));
+                removeProcessByPID(procList, childPID);
+            }
+        }
+    } while (childPID > 0);
+}
+
 int main() {
+    // Associate signals to their handlers
+    signal(SIGCHLD, childHandler);
+
     // Create the process list
-    proc_t *procList = initProcList();
+    procList = initProcList();
 
     struct cmdline *cmd;
     // Main loop
@@ -104,6 +134,7 @@ int main() {
 
         // Read a command from standard input and execute it
         cmd = readcmd();
+        updateProcList(procList);
         if (cmd == NULL) { // Exit if CTRL+D is pressed to avoid infinite loop
             DEBUG_PRINT("CTRL+D entered\n");
             exitShell(procList);
