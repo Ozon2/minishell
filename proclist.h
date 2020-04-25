@@ -40,11 +40,12 @@ proc_t *initProcList();
  *
  *   id: the ID of the process in the minishell
  *   pid: the process ID
+ *   status: the status of the process
  *   commandName: the name of the command executed by this process
  *
  *   Return: the created process
  */
-proc_t createProcess(int id, int pid, char **commandName);
+proc_t createProcess(int id, int pid, state status, char **commandName);
 
 /*
  * Function: addProcess
@@ -53,11 +54,12 @@ proc_t createProcess(int id, int pid, char **commandName);
  *
  *   head: a pointer to the the head of the list
  *   pid: the process ID
+ *   status: the status of the process
  *   commandName: the name of the command executed by this process
  *
  *   Return: ID of the new process in the minishell
  */
-int addProcess(proc_t *head, int pid, char **commandName);
+int addProcess(proc_t *head, int pid, state status, char **commandName);
 
 /*
  * Function: lengthProcList
@@ -97,11 +99,21 @@ void removeProcessByPID(proc_t *head, int pid);
  * ----------------------
  *   Print the information about a process
  *
- *   head: a pointer to the the head of the list
+ *   proc: the process to print
  *   lastID: ID of the last modified process
  *   previousID: ID of the second-to-last modified process
  */
 void printProcess(proc_t proc, int lastID, int previousID);
+
+/*
+ * Function: printProcessByID
+ * --------------------------
+ *   Print the information about a process with its ID
+ *
+ *   head: a pointer to the the head of the list
+ *   id: the ID of the process to print
+ */
+void printProcessByID(proc_t *head, int id);
 
 /*
  * Function: printProcList

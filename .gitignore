@@ -54,3 +54,5 @@ dkms.conf
 .vscode
 minishell
 test
+test_fg.c
+test_fg

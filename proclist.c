@@ -14,11 +14,11 @@ proc_t *initProcList() {
     return head;
 }
 
-int addProcess(proc_t *head, int pid, char **commandName) {
+int addProcess(proc_t *head, int pid, state status, char **commandName) {
     DEBUG_PRINTF("Adding process %d to the list\n", pid);
     if (*head == NULL) { // The list is empty
         DEBUG_PRINT("List initialized\n");
-        *head = createProcess(1, pid, commandName);
+        *head = createProcess(1, pid, status, commandName);
         return 1;
     }
     else {
@@ -28,12 +28,12 @@ int addProcess(proc_t *head, int pid, char **commandName) {
             current = current->next;
         }
         int newID = current->id + 1;
-        current->next = createProcess(newID, pid, commandName);
+        current->next = createProcess(newID, pid, status, commandName);
         return newID;
     }
 }
 
-proc_t createProcess(int id, int pid, char **commandName) {
+proc_t createProcess(int id, int pid, state status, char **commandName) {
     proc_t newProc;
     DEBUG_PRINT("Allocating new process\n");
     newProc = safe_malloc(sizeof(struct procList));
@@ -56,7 +56,7 @@ proc_t createProcess(int id, int pid, char **commandName) {
 
     newProc->id = id;
     newProc->pid = pid;
-    newProc->state = ACTIVE;
+    newProc->state = status;
     newProc->commandName = name;
     gettimeofday(&(newProc->time), NULL);
     newProc->next = NULL;
@@ -130,6 +130,19 @@ void printProcess(proc_t proc, int lastID, int previousID) {
     printf("%s\n", proc->commandName);
 }
 
+void printProcessByID(proc_t *head, int id) {
+    int lastID, previousID;
+    getLastTwoProcesses(head, &lastID, &previousID);
+    proc_t current = *head;
+    while (current != NULL) {
+        // Print the information about the process
+        if (current->id == id) {
+            printProcess(current, lastID, previousID);
+            current = current->next;
+        }
+    }
+}
+
 void printProcList(proc_t *head) {
     if (*head == NULL) { // Empty list
         printf("\n");
@@ -148,7 +161,6 @@ void printProcList(proc_t *head) {
         printProcess(current, lastID, previousID);
         current = current->next;
     }
-    printf("\n");
 }
 
 void getLastTwoProcesses(proc_t *head, int *lastID, int *previousID) {

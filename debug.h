@@ -5,9 +5,9 @@
 #ifndef __DEBUG_H
 #define __DEBUG_H
 
-#include <stdio.h>
+#define DEBUG 1 // (0/1) to hide/show debug information
 
-#define DEBUG 1
+#include <stdio.h>
 
 #if defined(DEBUG) && DEBUG > 0
 #define DEBUG_PRINTF(fmt, ...)                                                                     \

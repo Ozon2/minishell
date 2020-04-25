@@ -36,25 +36,7 @@ void exitShell(proc_t *procList) {
 
 void list(proc_t *procList) {
     DEBUG_PRINT("Executing built-in command 'list'\n");
-    if (*procList == NULL) { // Empty list
-        printf("\n");
-        return;
-    }
-
-    // Get the last two processes
-    int lastID, previousID;
-    getLastTwoProcesses(procList, &lastID, &previousID);
-
-    // Loop trough each process in the list and display its information
-    proc_t current = *procList;
-    while (current != NULL) {
-
-        // Print the information about the process
-        printProcess(current, lastID, previousID);
-
-        // Go to the next process
-        current = current->next;
-    }
+    printProcList(procList);
 }
 
 int cmdlineToPID(struct cmdline *cmd, proc_t *procList) {

@@ -2,7 +2,7 @@
  * A minimalist command line interface between the user and the operating system
  */
 
-#define _GNU_SOURCE /* WCONTINUED */
+#define _GNU_SOURCE // WCONTINUED
 
 // Minishell prompt
 #define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
@@ -23,8 +23,11 @@
 #include "proclist.h"
 #include "readcmd.h"
 
-// Global variables
-proc_t *procList;
+// Global variables (used in signal handlers)
+proc_t *procList;          // The process list
+int foregroundPID;         // Current PID of the process executed in foreground
+struct cmdline *cmd;       // The last command line entered
+bool stopReceived = false; // CTRL+Z received by foreground process ?
 
 /*
  * Function: execExternalCommand
@@ -52,15 +55,20 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
     }
     else { // Parent process
         if (cmd->backgrounded) {
-            int newID = addProcess(procList, forkPID, cmd->seq[0]);
-            printf("[%d] %d\n", newID, forkPID);
+            int newID = addProcess(procList, forkPID, ACTIVE, cmd->seq[0]);
+            printProcessByID(procList, newID);
         }
         else {
-            DEBUG_PRINTF("[%d] Parent process waiting for the end of its child process\n",
-                         getpid());
-            setpgid(forkPID, FOREGROUND_GROUP); // Put all foregound processes in their own group
-            // Wait for the child to finish
-            waitpid(forkPID, NULL, 0);
+            DEBUG_PRINTF("[%d] Parent process waiting for its child %d\n", getpid(), forkPID);
+            foregroundPID = forkPID;
+            // Wait for the child to finish or to be stopped, stopReceived needed because waitpid
+            // would sometimes not detect the foreground process being stopped by CTRL+Z
+            int childPID;
+            do {
+                childPID = waitpid(forkPID, NULL, WNOHANG | WUNTRACED);
+            } while (childPID == 0 && !stopReceived);
+            stopReceived = false; // Reset stopReceived value
+            DEBUG_PRINTF("[%d] Child %d stopped or ended\n", getpid(), forkPID);
         }
     }
 }
@@ -131,7 +139,14 @@ void childHandler() {
  */
 void sigtstpHandler() {
     DEBUG_PRINT("SIGTSTP received\n");
-    killpg(FOREGROUND_GROUP, SIGSTOP);
+    kill(foregroundPID, SIGSTOP);
+    // Add the process to the list (if it is not already present)
+    int id = getID(procList, foregroundPID);
+    if (id == 0 && cmd != NULL) {
+        id = addProcess(procList, foregroundPID, SUSPENDED, cmd->seq[0]);
+        printProcessByID(procList, id);
+        stopReceived = true;
+    }
 }
 
 void printSignal(int sig) {
@@ -167,7 +182,6 @@ int main() {
     // Create the process list
     procList = initProcList();
 
-    struct cmdline *cmd;
     // Main loop
     while (true) {
         // Show the prompt
