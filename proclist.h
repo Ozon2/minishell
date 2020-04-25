@@ -90,7 +90,7 @@ void removeProcessByID(proc_t *head, int id);
  *   head: a pointer to the the head of the list
  *   pid: PID of the process to remove
  */
-void removeProcessByPID(proc_t *head, int id);
+void removeProcessByPID(proc_t *head, int pid);
 
 /*
  * Function: printProcess

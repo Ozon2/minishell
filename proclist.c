@@ -113,25 +113,19 @@ void printProcess(proc_t proc, int lastID, int previousID) {
     // Print the ID of the process
     printf("[%d]", proc->id);
     // Print a special character if the process is the last or second-to-last modified
-    if (proc->id == lastID) {
+    if (proc->id == lastID)
         printf("+  ");
-    }
-    else if (proc->id == previousID) {
+    else if (proc->id == previousID)
         printf("-  ");
-    }
-    else {
+    else
         printf("   ");
-    }
     // Print the state of the process
-    if (proc->state == SUSPENDED) {
+    if (proc->state == SUSPENDED)
         printf("Stopped\t\t      ");
-    }
-    else if (proc->state == ACTIVE) {
+    else if (proc->state == ACTIVE)
         printf("Running\t\t      ");
-    }
-    else {
+    else
         printf("Done\t\t      ");
-    }
     // Print the command executed by the process
     printf("%s\n", proc->commandName);
 }

@@ -1,6 +1,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "builtins.h"
@@ -48,30 +49,8 @@ void list(proc_t *procList) {
     proc_t current = *procList;
     while (current != NULL) {
 
-        // Print the ID of the process
-        printf("[%d]", current->id);
-        // Print a special character if the process is the last or second-to-last modified
-        if (current->id == lastID) {
-            printf("+  ");
-        }
-        else if (current->id == previousID) {
-            printf("-  ");
-        }
-        else {
-            printf("   ");
-        }
-        // Print the state of the process
-        if (current->state == SUSPENDED) {
-            printf("Stopped\t\t      ");
-        }
-        else if (current->state == ACTIVE) {
-            printf("Running\t\t      ");
-        }
-        else {
-            printf("Done\t\t      ");
-        }
-        // Print the command executed by the process
-        printf("%s\n", current->commandName);
+        // Print the information about the process
+        printProcess(current, lastID, previousID);
 
         // Go to the next process
         current = current->next;
@@ -79,10 +58,17 @@ void list(proc_t *procList) {
 }
 
 int cmdlineToPID(struct cmdline *cmd, proc_t *procList) {
-    int pid = 0;
+    int lastID, previousID, id;
+    getLastTwoProcesses(procList, &lastID, &previousID);
+    int pid = getPID(procList, lastID); // If no arguments, return last modified process
     if (cmd->seq[0][1] != NULL) {
-        int id = atoi(cmd->seq[0][1]);
-        int pid = getPID(procList, id);
+        if (*(cmd->seq[0][1]) == '+')
+            id = lastID;
+        else if (*(cmd->seq[0][1]) == '-')
+            id = previousID;
+        else
+            id = atoi(cmd->seq[0][1]);
+        pid = getPID(procList, id);
     }
     return pid;
 }
@@ -92,6 +78,7 @@ void stop(struct cmdline *cmd, proc_t *procList) {
 
     int pid = cmdlineToPID(cmd, procList);
     if (pid == 0) { // No process found
+        printf("minishell: stop: no such job\n");
         return;
     }
 
@@ -104,6 +91,7 @@ void bg(struct cmdline *cmd, proc_t *procList) {
 
     int pid = cmdlineToPID(cmd, procList);
     if (pid == 0) { // No process found
+        printf("minishell: bg: no such job\n");
         return;
     }
 
@@ -116,11 +104,25 @@ void fg(struct cmdline *cmd, proc_t *procList) {
 
     int pid = cmdlineToPID(cmd, procList);
     if (pid == 0) { // No process found
+        printf("minishell: fg: no such job\n");
         return;
     }
 
     kill(pid, SIGCONT);
     DEBUG_PRINTF("[%d] Process resumed\n", pid);
 
-    printf("TODO: TAKE PROCESS TO FOREGROUND\n");
+    if (tcsetpgrp(STDIN_FILENO, pid) != 0) // Move the child process to foreground
+        perror("Foreground error");
+
+    removeProcessByPID(procList, pid);
+    waitpid(pid, NULL, 0); // Wait for the child to finish
+    DEBUG_PRINTF("[%d] Process finished\n", pid);
+
+    // SIGTTOU is generated when tcsetpgrp() is called from a background process group
+    signal(SIGTTOU, SIG_IGN);
+
+    if (tcsetpgrp(STDIN_FILENO, getpid()) != 0) // Move the minishell to foreground
+        perror("Foreground error");
+
+    signal(SIGTTOU, SIG_DFL);
 }
