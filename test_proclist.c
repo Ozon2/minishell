@@ -10,11 +10,11 @@ void fillList(proc_t *head) {
     char *cmd4[] = {"cat", "proclist.h", NULL};
     char *cmd5[] = {"vim", "minishell.c", "this command is too long and will exceed the max size",
                     NULL};
-    addProcess(head, 1279, cmd1);
-    addProcess(head, 1358, cmd2);
-    addProcess(head, 1423, cmd3);
-    addProcess(head, 1428, cmd4);
-    addProcess(head, 1507, cmd5);
+    addProcess(head, 1279, ACTIVE, cmd1);
+    addProcess(head, 1358, ACTIVE, cmd2);
+    addProcess(head, 1423, ACTIVE, cmd3);
+    addProcess(head, 1428, ACTIVE, cmd4);
+    addProcess(head, 1507, ACTIVE, cmd5);
 }
 
 void test_addProcess() {

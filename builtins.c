@@ -95,7 +95,6 @@ void fg(struct cmdline *cmd, proc_t *procList, int *foregroundPID, bool *stopRec
     kill(pid, SIGCONT);
     DEBUG_PRINTF("[%d] Process resumed\n", pid);
 
-    setProcessStatusByPID(procList, pid, FOREGROUNDED);
     *foregroundPID = pid;
 
     // Wait for the child to finish or to be stopped
@@ -103,7 +102,6 @@ void fg(struct cmdline *cmd, proc_t *procList, int *foregroundPID, bool *stopRec
     do {
         wpid = waitpid(pid, NULL, WNOHANG | WUNTRACED);
     } while (wpid == 0 && !(*stopReceived));
-    *stopReceived = false; // Reset stopReceived value
 
     DEBUG_PRINTF("[%d] Process finished or stopped\n", pid);
 }

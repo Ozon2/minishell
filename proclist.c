@@ -165,35 +165,29 @@ void printProcList(proc_t *head) {
 }
 
 void getLastTwoProcesses(proc_t *head, int *lastID, int *previousID) {
+    // Initialize previous and last to minimum time
     *lastID = 0;
     *previousID = 0;
-    if (*head == NULL) {
-        return;
-    }
+    struct timeval lastTime;
+    timerclear(&lastTime);
+    struct timeval previousTime;
+    timerclear(&previousTime);
 
     proc_t current = *head;
-    proc_t last = *head;
-    *lastID = current->id;
-    proc_t previous = current->next;
-    if (previous != NULL) {
-        *previousID = previous->id;
-    }
 
     while (current != NULL) {
         // current time > last time
-        if (current->time.tv_sec >= last->time.tv_sec &&
-            current->time.tv_usec > last->time.tv_usec) {
+        if (timercmp(&(current->time), &lastTime, >)) {
             // Update previous and last
-            previous = last;
-            *previousID = last->id;
-            last = current;
+            previousTime = lastTime;
+            *previousID = *lastID;
+            lastTime = current->time;
             *lastID = current->id;
         }
-        // current != last && current time > previous time
-        else if (previous != NULL && current->time.tv_sec >= previous->time.tv_sec &&
-                 current->time.tv_usec > previous->time.tv_usec) {
+        // current time > previous time
+        else if (current->id != *lastID && timercmp(&(current->time), &previousTime, >)) {
             // Update previous
-            previous = current;
+            previousTime = current->time;
             *previousID = current->id;
         }
         current = current->next;
@@ -206,7 +200,7 @@ void setProcessStatusByPID(proc_t *head, int pid, state status) {
         if (current->pid == pid) {
             current->state = status;
             gettimeofday(&(current->time), NULL);
-            DEBUG_PRINTF("[%d] Status changed\n", pid);
+            DEBUG_PRINTF("[%d] Status changed to %d\n", pid, current->state);
             return;
         }
         current = current->next;
@@ -241,7 +235,7 @@ state getProcessStatusByPID(proc_t *head, int pid) {
     proc_t current = *head;
     while (current != NULL) {
         if (current->pid == pid) {
-            DEBUG_PRINTF("[%d] Status found\n", pid);
+            DEBUG_PRINTF("[%d] Status found = %d\n", pid, current->state);
             return current->state;
         }
         current = current->next;

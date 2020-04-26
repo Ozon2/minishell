@@ -5,6 +5,8 @@ CFLAGS=-Wall -Wextra -pedantic $(DEBUG)
 LDFLAGS=$(DEBUG)
 EXEC=minishell test
 
+all: minishell test
+
 minishell: readcmd.o builtins.o proclist.o debug.o minishell.o
 	$(CC) $(LDFLAGS) $^ -o $@
 

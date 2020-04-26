@@ -8,7 +8,7 @@
 #include <sys/time.h>
 
 // Define the state of a process
-typedef enum state { SUSPENDED, ACTIVE, DONE, FOREGROUNDED, UNDEFINED } state;
+typedef enum state { SUSPENDED, ACTIVE, DONE, UNDEFINED } state;
 
 // Struct to define a process
 typedef struct procList {

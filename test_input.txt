@@ -1,14 +1,15 @@
-sleep 100&
-sleep 1&
 sleep 300&
-list
-stop 2
-sleep 0.1
-list
-sleep 2
-bg 2
-sleep 0.1
-list
-sleep 2
+sleep 1
+sleep 300&
+sleep 300&
+sleep 1
+sleep 300&
+sleep 300&
+sleep 1
+sleep 300&
+sleep 300&
+sleep 300&
+sleep 1
+sleep 300&
 list
 exit
