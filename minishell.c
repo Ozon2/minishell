@@ -1,13 +1,14 @@
 /*
  * A minimalist command line interface between the user and the operating system
+ *
+ * TODO:
+ * - Handle SIGSTOP (use childHandler)
  */
 
 #define _GNU_SOURCE // WCONTINUED
 
 // Minishell prompt
 #define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
-
-#define FOREGROUND_GROUP 1000
 
 #include <errno.h>
 #include <signal.h>
@@ -25,7 +26,7 @@
 
 // Global variables (used in signal handlers)
 proc_t *procList;          // The process list
-int foregroundPID;         // Current PID of the process executed in foreground
+int foregroundPID = 0;     // PID of the foreground process
 struct cmdline *cmd;       // The last command line entered
 bool stopReceived = false; // CTRL+Z received by foreground process ?
 
@@ -61,8 +62,10 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
         else {
             DEBUG_PRINTF("[%d] Parent process waiting for its child %d\n", getpid(), forkPID);
             foregroundPID = forkPID;
-            // Wait for the child to finish or to be stopped, stopReceived needed because waitpid
-            // would sometimes not detect the foreground process being stopped by CTRL+Z
+            // Wait for the child to finish or to be stopped,
+
+            // stopReceived needed because the waitpid in childHandler is sometimes the first to
+            // receive the information that the process was stopped
             int childPID;
             do {
                 childPID = waitpid(forkPID, NULL, WNOHANG | WUNTRACED);
@@ -93,7 +96,7 @@ void treatCommand(struct cmdline *cmd, proc_t *procList) {
     else if (!strcmp(cmdName, "bg"))
         bg(cmd, procList);
     else if (!strcmp(cmdName, "fg"))
-        fg(cmd, procList);
+        fg(cmd, procList, &foregroundPID, &stopReceived);
     else
         execExternalCommand(cmd, procList);
 }
@@ -103,7 +106,8 @@ void treatCommand(struct cmdline *cmd, proc_t *procList) {
  * ----------------------
  *   Handle SIGCHLD
  */
-void childHandler() {
+void childHandler(int sig) {
+    DEBUG_PRINTF("childHandler called with signal %d\n", sig);
     int childState, childPID;
     do {
         childPID = (int)waitpid(-1, &childState, WNOHANG | WUNTRACED | WCONTINUED);
@@ -122,7 +126,10 @@ void childHandler() {
             }
             else if (WIFEXITED(childState)) {
                 DEBUG_PRINTF("[%d] Child exited, status=%d\n", childPID, WEXITSTATUS(childState));
-                setProcessStatusByPID(procList, childPID, DONE);
+                if (getProcessStatusByPID(procList, childPID) != FOREGROUNDED)
+                    setProcessStatusByPID(procList, childPID, DONE);
+                else
+                    removeProcessByPID(procList, childPID);
             }
             else if (WIFSIGNALED(childState)) {
                 DEBUG_PRINTF("[%d] Child killed by signal %d\n", childPID, WTERMSIG(childState));
@@ -133,20 +140,36 @@ void childHandler() {
 }
 
 /*
- * Function: sigtstpHandler
- * ------------------------
+ * Function: stopHandler
+ * ---------------------
  *   Handle SIGTSTP
  */
-void sigtstpHandler() {
-    DEBUG_PRINT("SIGTSTP received\n");
-    kill(foregroundPID, SIGSTOP);
-    // Add the process to the list (if it is not already present)
-    int id = getID(procList, foregroundPID);
-    if (id == 0 && cmd != NULL) {
-        id = addProcess(procList, foregroundPID, SUSPENDED, cmd->seq[0]);
-        printProcessByID(procList, id);
-        stopReceived = true;
+void stopHandler() {
+    if (foregroundPID == 0) {
+        DEBUG_PRINT("Process 0 can't be suspended\n");
+        return;
     }
+
+    state status = getProcessStatusByPID(procList, foregroundPID);
+    if (status == SUSPENDED) { // Process already stopped
+        DEBUG_PRINTF("SIGTSTP received, but process %d is already suspended\n", foregroundPID);
+        return;
+    }
+    DEBUG_PRINTF("SIGTSTP received, stopping foreground process %d\n", foregroundPID);
+    kill(foregroundPID, SIGSTOP);
+    stopReceived = true;
+    // Add the process to the list
+    if (status == UNDEFINED) { // If it is not already present in the list
+        addProcess(procList, foregroundPID, SUSPENDED, cmd->seq[0]);
+    }
+    else if (status == FOREGROUNDED) {
+        setProcessStatusByPID(procList, foregroundPID, SUSPENDED);
+    }
+    else {
+        DEBUG_PRINTF("ERROR: status=%d\n", status);
+    }
+
+    printProcessByPID(procList, foregroundPID);
 }
 
 void printSignal(int sig) {
@@ -164,14 +187,15 @@ int main() {
     sigemptyset(&sa.sa_mask);
     sigaction(SIGCHLD, &sa, 0);
 
-    sa.sa_handler = sigtstpHandler;
+    sa.sa_handler = stopHandler;
     sigaction(SIGTSTP, &sa, 0);
+    sigaction(SIGSTOP, &sa, 0);
 
-    // for (int i = 1; i < 65; i++) {
-    //     if (i != SIGCHLD) {
-    //         signal(i, printSignal);
-    //     }
-    // }
+    for (int i = 1; i < 65; i++) {
+        if (i != SIGCHLD && i != SIGTSTP && i != SIGSTOP) {
+            signal(i, printSignal);
+        }
+    }
 
     // // Mask
     // sigset_t ens_signaux;

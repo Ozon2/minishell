@@ -71,7 +71,9 @@ void bg(struct cmdline *cmd, proc_t *procList);
  *
  *   cmd: the command line
  *   procList: the process list
+ *   foregroundPID: the PID of the foreground process
+ *   stopReceived: has the foreground process been stopped ?
  */
-void fg(struct cmdline *cmd, proc_t *procList);
+void fg(struct cmdline *cmd, proc_t *procList, int *foregroundPID, bool *stopReceived);
 
 #endif

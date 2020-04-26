@@ -65,6 +65,8 @@ void stop(struct cmdline *cmd, proc_t *procList) {
     }
 
     kill(pid, SIGTSTP);
+    setProcessStatusByPID(procList, pid, SUSPENDED);
+    printProcessByPID(procList, pid);
     DEBUG_PRINTF("[%d] Process stopped\n", pid);
 }
 
@@ -81,7 +83,7 @@ void bg(struct cmdline *cmd, proc_t *procList) {
     DEBUG_PRINTF("[%d] Process resumed\n", pid);
 }
 
-void fg(struct cmdline *cmd, proc_t *procList) {
+void fg(struct cmdline *cmd, proc_t *procList, int *foregroundPID, bool *stopReceived) {
     DEBUG_PRINT("Executing built-in command 'fg'\n");
 
     int pid = cmdlineToPID(cmd, procList);
@@ -93,18 +95,15 @@ void fg(struct cmdline *cmd, proc_t *procList) {
     kill(pid, SIGCONT);
     DEBUG_PRINTF("[%d] Process resumed\n", pid);
 
-    if (tcsetpgrp(STDIN_FILENO, pid) != 0) // Move the child process to foreground
-        perror("Foreground error");
+    setProcessStatusByPID(procList, pid, FOREGROUNDED);
+    *foregroundPID = pid;
 
-    removeProcessByPID(procList, pid);
-    waitpid(pid, NULL, 0); // Wait for the child to finish
-    DEBUG_PRINTF("[%d] Process finished\n", pid);
+    // Wait for the child to finish or to be stopped
+    int wpid;
+    do {
+        wpid = waitpid(pid, NULL, WNOHANG | WUNTRACED);
+    } while (wpid == 0 && !(*stopReceived));
+    *stopReceived = false; // Reset stopReceived value
 
-    // SIGTTOU is generated when tcsetpgrp() is called from a background process group
-    signal(SIGTTOU, SIG_IGN);
-
-    if (tcsetpgrp(STDIN_FILENO, getpid()) != 0) // Move the minishell to foreground
-        perror("Foreground error");
-
-    signal(SIGTTOU, SIG_DFL);
+    DEBUG_PRINTF("[%d] Process finished or stopped\n", pid);
 }

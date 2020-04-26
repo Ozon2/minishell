@@ -8,7 +8,7 @@
 #include <sys/time.h>
 
 // Define the state of a process
-typedef enum state { SUSPENDED, ACTIVE, DONE } state;
+typedef enum state { SUSPENDED, ACTIVE, DONE, FOREGROUNDED, UNDEFINED } state;
 
 // Struct to define a process
 typedef struct procList {
@@ -116,6 +116,16 @@ void printProcess(proc_t proc, int lastID, int previousID);
 void printProcessByID(proc_t *head, int id);
 
 /*
+ * Function: printProcessByPID
+ * ---------------------------
+ *   Print the information about a process with its PID
+ *
+ *   head: a pointer to the the head of the list
+ *   pid: the PID of the process to print
+ */
+void printProcessByPID(proc_t *head, int pid);
+
+/*
  * Function: printProcList
  * -----------------------
  *   Print the process list
@@ -156,6 +166,18 @@ void setProcessStatusByPID(proc_t *head, int pid, state status);
  *   status: the new status
  */
 void setProcessStatusByID(proc_t *head, int id, state status);
+
+/*
+ * Function: getProcessStatusByPID
+ * -------------------------------
+ *   Change the status of a process
+ *
+ *   head: a pointer to the the head of the list
+ *   pid: the PID of the process
+ *
+ *   Return: the state of the process (or NULL if not found)
+ */
+state getProcessStatusByPID(proc_t *head, int pid);
 
 /*
  * Function: updateProcList

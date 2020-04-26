@@ -52,7 +52,6 @@ proc_t createProcess(int id, int pid, state status, char **commandName) {
             break;
         }
     }
-    strcat(name, " &");
 
     newProc->id = id;
     newProc->pid = pid;
@@ -124,7 +123,7 @@ void printProcess(proc_t proc, int lastID, int previousID) {
         printf("Stopped\t\t      ");
     else if (proc->state == ACTIVE)
         printf("Running\t\t      ");
-    else
+    else if (proc->state == DONE)
         printf("Done\t\t      ");
     // Print the command executed by the process
     printf("%s\n", proc->commandName);
@@ -138,10 +137,12 @@ void printProcessByID(proc_t *head, int id) {
         // Print the information about the process
         if (current->id == id) {
             printProcess(current, lastID, previousID);
-            current = current->next;
         }
+        current = current->next;
     }
 }
+
+void printProcessByPID(proc_t *head, int pid) { printProcessByID(head, getID(head, pid)); }
 
 void printProcList(proc_t *head) {
     if (*head == NULL) { // Empty list
@@ -169,6 +170,7 @@ void getLastTwoProcesses(proc_t *head, int *lastID, int *previousID) {
     if (*head == NULL) {
         return;
     }
+
     proc_t current = *head;
     proc_t last = *head;
     *lastID = current->id;
@@ -188,8 +190,7 @@ void getLastTwoProcesses(proc_t *head, int *lastID, int *previousID) {
             *lastID = current->id;
         }
         // current != last && current time > previous time
-        else if (previous != NULL && current != last &&
-                 current->time.tv_sec >= previous->time.tv_sec &&
+        else if (previous != NULL && current->time.tv_sec >= previous->time.tv_sec &&
                  current->time.tv_usec > previous->time.tv_usec) {
             // Update previous
             previous = current;
@@ -234,6 +235,19 @@ void updateProcList(proc_t *head) {
         }
         current = next;
     }
+}
+
+state getProcessStatusByPID(proc_t *head, int pid) {
+    proc_t current = *head;
+    while (current != NULL) {
+        if (current->pid == pid) {
+            DEBUG_PRINTF("[%d] Status found\n", pid);
+            return current->state;
+        }
+        current = current->next;
+    }
+    DEBUG_PRINTF("[%d] Process not found in the list\n", pid);
+    return UNDEFINED;
 }
 
 int getID(proc_t *head, int pid) {
