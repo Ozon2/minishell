@@ -52,6 +52,7 @@ proc_t createProcess(int id, int pid, state status, char **commandName) {
             break;
         }
     }
+    strcat(name, " &");
 
     newProc->id = id;
     newProc->pid = pid;

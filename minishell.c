@@ -64,12 +64,10 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
             DEBUG_PRINTF("[%d] Parent process waiting for its child %d\n", getpid(), forkPID);
             foregroundPID = forkPID;
             // Wait for the child to finish or to be stopped,
-            // stopReceived needed because the waitpid in childHandler is sometimes the first to
-            // receive the information that the process was stopped
-            int childPID;
-            do {
-                childPID = waitpid(forkPID, NULL, WNOHANG | WUNTRACED);
-            } while (childPID == 0 && !stopReceived);
+            while (!stopReceived) {
+            }
+            stopReceived = false; // Reset stopReceived value
+            foregroundPID = 0;
             DEBUG_PRINTF("[%d] Child %d stopped or ended\n", getpid(), forkPID);
         }
     }
@@ -83,7 +81,6 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
  *   cmd: the command to treat
  */
 void treatCommand(struct cmdline *cmd, proc_t *procList) {
-    stopReceived = false;
     char *cmdName = cmd->seq[0][0];
     if (!strcmp(cmdName, "cd"))
         cd(cmd);
@@ -118,7 +115,13 @@ void childHandler(int sig) {
         else if (childPID > 0) {
             if (WIFSTOPPED(childState)) {
                 DEBUG_PRINTF("[%d] Child stopped by signal %d\n", childPID, WSTOPSIG(childState));
-                setProcessStatusByPID(procList, childPID, SUSPENDED);
+                if (childPID == foregroundPID) {
+                    DEBUG_PRINT("stopReceived=true\n");
+                    stopReceived = true;
+                }
+                else {
+                    setProcessStatusByPID(procList, childPID, SUSPENDED);
+                }
             }
             else if (WIFCONTINUED(childState)) {
                 DEBUG_PRINTF("[%d] Child resumed\n", childPID);
@@ -126,11 +129,24 @@ void childHandler(int sig) {
             }
             else if (WIFEXITED(childState)) {
                 DEBUG_PRINTF("[%d] Child exited, status=%d\n", childPID, WEXITSTATUS(childState));
-                setProcessStatusByPID(procList, childPID, DONE);
+                if (childPID == foregroundPID) {
+                    DEBUG_PRINT("stopReceived=true\n");
+                    stopReceived = true;
+                    removeProcessByPID(procList, childPID);
+                }
+                else {
+                    setProcessStatusByPID(procList, childPID, DONE);
+                }
             }
             else if (WIFSIGNALED(childState)) {
                 DEBUG_PRINTF("[%d] Child killed by signal %d\n", childPID, WTERMSIG(childState));
-                removeProcessByPID(procList, childPID);
+                if (childPID == foregroundPID) {
+                    DEBUG_PRINT("stopReceived=true\n");
+                    stopReceived = true;
+                }
+                else {
+                    removeProcessByPID(procList, childPID);
+                }
             }
         }
     } while (childPID > 0);
@@ -147,7 +163,6 @@ void stopHandler() {
         return;
     }
 
-    stopReceived = true;
     state status = getProcessStatusByPID(procList, foregroundPID);
     if (status == SUSPENDED) { // Process already stopped
         DEBUG_PRINTF("SIGTSTP received, but process %d is already suspended\n", foregroundPID);
@@ -166,13 +181,6 @@ void stopHandler() {
     printProcessByPID(procList, foregroundPID);
 }
 
-void printSignal(int sig) {
-    printf("==================\n");
-    printf("Signal %d received\n", sig);
-    printf("==================\n");
-    exit(EXIT_FAILURE);
-}
-
 int main() {
     // Associate signals to their handlers
     struct sigaction sa;
@@ -184,12 +192,6 @@ int main() {
     sa.sa_handler = stopHandler;
     sigaction(SIGTSTP, &sa, 0);
     sigaction(SIGSTOP, &sa, 0);
-
-    for (int i = 1; i < 65; i++) {
-        if (i != SIGCHLD && i != SIGTSTP && i != SIGSTOP) {
-            signal(i, printSignal);
-        }
-    }
 
     // // Mask
     // sigset_t ens_signaux;
