@@ -64,8 +64,10 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
             foregroundPID = forkPID;
             // Wait for the child to finish or to be stopped,
             while (!stopReceived) {
+                sleep(0.1);
             }
-            stopReceived = false; // Reset stopReceived value
+            // Reset stopReceived and foregroundPID values
+            stopReceived = false;
             foregroundPID = 0;
             DEBUG_PRINTF("[%d] Child %d stopped or ended\n", getpid(), forkPID);
         }
@@ -121,9 +123,9 @@ void childHandler(int sig) {
                     if (getProcessStatusByPID(procList, foregroundPID) == UNDEFINED) {
                         addProcess(procList, foregroundPID, SUSPENDED, cmd->seq[0]);
                     }
+                    setProcessStatusByPID(procList, childPID, SUSPENDED);
+                    printProcessByPID(procList, childPID);
                 }
-                setProcessStatusByPID(procList, childPID, SUSPENDED);
-                printProcessByPID(procList, childPID);
             }
             else if (WIFCONTINUED(childState)) {
                 DEBUG_PRINTF("[%d] Child resumed\n", childPID);

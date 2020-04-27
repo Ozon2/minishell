@@ -3,14 +3,17 @@ CC=gcc
 DEBUG=-g3 -fno-omit-frame-pointer -fsanitize=address,undefined,leak,unreachable,null,bounds
 CFLAGS=-Wall -Wextra -pedantic $(DEBUG)
 LDFLAGS=$(DEBUG)
-EXEC=minishell test
+EXEC=minishell test test_fg
 
-all: minishell test
+all: minishell test test_fg
 
 minishell: readcmd.o builtins.o proclist.o debug.o minishell.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 test: proclist.o debug.o test_proclist.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+test_fg: test_fg.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 depend:
@@ -19,7 +22,7 @@ depend:
 clean:
 	rm *.o $(EXEC)
 
-.PHONY: depend clean
+.PHONY: depend clean all
 
 # DO NOT DELETE
 

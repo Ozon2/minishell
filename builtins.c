@@ -65,9 +65,9 @@ void stop(struct cmdline *cmd, proc_t *procList) {
     }
 
     kill(pid, SIGTSTP);
+    DEBUG_PRINTF("[%d] Process stopped\n", pid);
     setProcessStatusByPID(procList, pid, SUSPENDED);
     printProcessByPID(procList, pid);
-    DEBUG_PRINTF("[%d] Process stopped\n", pid);
 }
 
 void bg(struct cmdline *cmd, proc_t *procList) {
@@ -99,8 +99,10 @@ void fg(struct cmdline *cmd, proc_t *procList, int *foregroundPID, bool *stopRec
 
     // Wait for the child to finish or to be stopped
     while (!(*stopReceived)) {
+        sleep(0.1);
     }
-    *stopReceived = false; // Reset stopReceived value
+    // Reset stopReceived and foregroundPID values
+    *stopReceived = false;
     *foregroundPID = 0;
 
     DEBUG_PRINTF("[%d] Process finished or stopped\n", pid);
