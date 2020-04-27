@@ -3,7 +3,6 @@
  *
  * TODO:
  * - Handle SIGSTOP (use childHandler)
- * - CTRL-Z has unexpected results on background processes
  */
 
 #define _GNU_SOURCE // WCONTINUED
@@ -51,9 +50,12 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
     else if (forkPID == 0) { // Child process
 
         DEBUG_PRINTF("[%d] Child process executing command '%s'\n", getpid(), cmd->seq[0][0]);
+        // We need to set the child process in its own group, otherwise
+        // it will receive SIGTSTP when CTRL+Z is pressed
+        setpgid(getpid(), getpid());
         execvp(cmd->seq[0][0], cmd->seq[0]);
-        printf("Unknown command\n"); // If execvp returns, the command failed
-        exit(1);
+        printf("Unknown command\n"); // If execvp returns, the command has failed
+        exit(EXIT_FAILURE);
     }
     else { // Parent process
         if (cmd->backgrounded) {
