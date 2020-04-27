@@ -1,8 +1,5 @@
 /*
  * A minimalist command line interface between the user and the operating system
- *
- * TODO:
- * - Handle SIGSTOP (use childHandler)
  */
 
 #define _GNU_SOURCE // WCONTINUED
@@ -120,10 +117,13 @@ void childHandler(int sig) {
                 if (childPID == foregroundPID) {
                     DEBUG_PRINT("stopReceived=true\n");
                     stopReceived = true;
+                    // Add the process to the list if it is not already present in the list
+                    if (getProcessStatusByPID(procList, foregroundPID) == UNDEFINED) {
+                        addProcess(procList, foregroundPID, SUSPENDED, cmd->seq[0]);
+                    }
                 }
-                else {
-                    setProcessStatusByPID(procList, childPID, SUSPENDED);
-                }
+                setProcessStatusByPID(procList, childPID, SUSPENDED);
+                printProcessByPID(procList, childPID);
             }
             else if (WIFCONTINUED(childState)) {
                 DEBUG_PRINTF("[%d] Child resumed\n", childPID);
@@ -167,20 +167,11 @@ void stopHandler() {
 
     state status = getProcessStatusByPID(procList, foregroundPID);
     if (status == SUSPENDED) { // Process already stopped
-        DEBUG_PRINTF("SIGTSTP received, but process %d is already suspended\n", foregroundPID);
+        DEBUG_PRINTF("Stop signal received, but process %d is already suspended\n", foregroundPID);
         return;
     }
-    DEBUG_PRINTF("SIGTSTP received, stopping foreground process %d\n", foregroundPID);
+    DEBUG_PRINTF("Stop signal received, stopping foreground process %d\n", foregroundPID);
     kill(foregroundPID, SIGSTOP);
-    // Add the process to the list
-    if (status == UNDEFINED) { // If it is not already present in the list
-        addProcess(procList, foregroundPID, SUSPENDED, cmd->seq[0]);
-    }
-    else {
-        setProcessStatusByPID(procList, foregroundPID, SUSPENDED);
-    }
-
-    printProcessByPID(procList, foregroundPID);
 }
 
 int main() {
@@ -193,13 +184,6 @@ int main() {
 
     sa.sa_handler = stopHandler;
     sigaction(SIGTSTP, &sa, 0);
-    sigaction(SIGSTOP, &sa, 0);
-
-    // // Mask
-    // sigset_t ens_signaux;
-    // sigemptyset(&ens_signaux);
-    // sigaddset(&ens_signaux, SIGTSTP);
-    // sigprocmask(SIG_BLOCK, &ens_signaux, NULL);
 
     // Create the process list
     procList = initProcList();
