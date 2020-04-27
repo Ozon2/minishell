@@ -104,8 +104,8 @@ void treatCommand(struct cmdline *cmd, proc_t *procList) {
  * ----------------------
  *   Handle SIGCHLD
  */
-void childHandler(int sig) {
-    DEBUG_PRINTF("childHandler called with signal %d\n", sig);
+void childHandler() {
+    DEBUG_PRINTF("childHandler received a signal\n");
     int childState, childPID;
     do {
         childPID = (int)waitpid(-1, &childState, WNOHANG | WUNTRACED | WCONTINUED);
