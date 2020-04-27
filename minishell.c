@@ -164,14 +164,28 @@ void stopHandler() {
         DEBUG_PRINT("Process 0 can't be suspended\n");
         return;
     }
-
     state status = getProcessStatusByPID(procList, foregroundPID);
     if (status == SUSPENDED) { // Process already stopped
         DEBUG_PRINTF("Stop signal received, but process %d is already suspended\n", foregroundPID);
         return;
     }
     DEBUG_PRINTF("Stop signal received, stopping foreground process %d\n", foregroundPID);
-    kill(foregroundPID, SIGSTOP);
+    kill(foregroundPID, SIGTSTP);
+}
+
+/*
+ * Function: sigintHandler
+ * -----------------------
+ *   Handle SIGINT
+ */
+void sigintHandler() {
+    if (foregroundPID == 0) {
+        DEBUG_PRINT("Process 0 can't be interrupted\n");
+        return;
+    }
+    DEBUG_PRINTF("SIGINT received, interrupting foreground process %d\n", foregroundPID);
+    kill(foregroundPID, SIGINT);
+    stopReceived = true;
 }
 
 int main() {
@@ -184,6 +198,9 @@ int main() {
 
     sa.sa_handler = stopHandler;
     sigaction(SIGTSTP, &sa, 0);
+
+    sa.sa_handler = sigintHandler;
+    sigaction(SIGINT, &sa, 0);
 
     // Create the process list
     procList = initProcList();
