@@ -5,7 +5,7 @@
 #ifndef __DEBUG_H
 #define __DEBUG_H
 
-#define DEBUG 0 // (0/1) to hide/show debug information
+#define DEBUG 1 // (0/1) to hide/show debug information
 
 #include <stdio.h>
 

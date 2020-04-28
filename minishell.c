@@ -49,7 +49,7 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
         DEBUG_PRINTF("[%d] Child process executing command '%s'\n", getpid(), cmd->seq[0][0]);
         // We need to set the child process in its own group, otherwise
         // it will receive SIGTSTP when CTRL+Z is pressed
-        setpgid(getpid(), getpid());
+        setsid();
         execvp(cmd->seq[0][0], cmd->seq[0]);
         printf("Unknown command\n"); // If execvp returns, the command has failed
         exit(EXIT_FAILURE);
@@ -105,7 +105,7 @@ void treatCommand(struct cmdline *cmd, proc_t *procList) {
  *   Handle SIGCHLD
  */
 void childHandler() {
-    DEBUG_PRINTF("childHandler received a signal\n");
+    DEBUG_PRINT("childHandler received a signal\n");
     int childState, childPID;
     do {
         childPID = (int)waitpid(-1, &childState, WNOHANG | WUNTRACED | WCONTINUED);
@@ -172,7 +172,7 @@ void stopHandler() {
         return;
     }
     DEBUG_PRINTF("Stop signal received, stopping foreground process %d\n", foregroundPID);
-    kill(foregroundPID, SIGTSTP);
+    kill(foregroundPID, SIGSTOP);
 }
 
 /*
@@ -186,7 +186,7 @@ void sigintHandler() {
         return;
     }
     DEBUG_PRINTF("SIGINT received, interrupting foreground process %d\n", foregroundPID);
-    kill(foregroundPID, SIGINT);
+    kill(foregroundPID, SIGKILL);
     stopReceived = true;
 }
 
