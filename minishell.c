@@ -33,9 +33,13 @@ bool stopReceived = false; // CTRL+Z received by foreground process ?
  * -----------------------------
  *   Execute an external command, a subprocess will be forked
  *
+ *   in: the input descriptor
+ *   out: the output descriptor
  *   cmd: the command to execute
+ *   i: the index of the command to execute in cmd
+ *   procList: the process list
  */
-void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
+void execExternalCommand(int in, int out, struct cmdline *cmd, int i, proc_t *procList) {
     int forkPID;
 
     fflush(stdout);   // Flush stdout to give an empty buffer to the child process
@@ -47,45 +51,31 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
     }
     else if (forkPID == 0) { // Child process
 
-        DEBUG_PRINTF("[%d] Child process executing command '%s'\n", getpid(), cmd->seq[0][0]);
+        DEBUG_PRINTF("[%d] Child process executing command '%s'\n", getpid(), cmd->seq[i][0]);
         // Handle input redirection
-        if (cmd->in != NULL) {
-            int inputDesc = open(cmd->in, O_RDONLY);
-            if (inputDesc < 0) {
-                printf("minishell: %s: No such file or directory\n", cmd->in);
-                exit(EXIT_FAILURE);
-            }
-            else {
-                DEBUG_PRINTF("Input read from %s\n", cmd->in);
-                dup2(inputDesc, STDIN_FILENO);
-                close(inputDesc);
-            }
+        if (in != STDIN_FILENO) {
+            DEBUG_PRINTF("Input read from %d\n", in);
+            dup2(in, STDIN_FILENO);
+            close(in);
         }
 
         // Handle output redirection
-        if (cmd->out != NULL) {
-            int outputDesc = open(cmd->out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (outputDesc < 0) {
-                perror("open");
-                exit(EXIT_FAILURE);
-            }
-            else {
-                DEBUG_PRINTF("Output redirected to %s\n", cmd->out);
-                dup2(outputDesc, STDOUT_FILENO);
-                close(outputDesc);
-            }
+        if (out != STDOUT_FILENO) {
+            DEBUG_PRINTF("Output redirected to %d\n", out);
+            dup2(out, STDOUT_FILENO);
+            close(out);
         }
 
         // We need to set the child process in its own group, otherwise
         // it will receive SIGTSTP when CTRL+Z is pressed
         setsid();
-        execvp(cmd->seq[0][0], cmd->seq[0]);
+        execvp(cmd->seq[i][0], cmd->seq[i]);
         printf("Unknown command\n"); // If execvp returns, the command has failed
         exit(EXIT_FAILURE);
     }
     else { // Parent process
         if (cmd->backgrounded) {
-            int newID = addProcess(procList, forkPID, ACTIVE, cmd->seq[0]);
+            int newID = addProcess(procList, forkPID, ACTIVE, cmd->seq[i]);
             printProcessByID(procList, newID);
         }
         else {
@@ -112,20 +102,76 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
  */
 void treatCommand(struct cmdline *cmd, proc_t *procList) {
     char *cmdName = cmd->seq[0][0];
-    if (!strcmp(cmdName, "cd"))
+    if (!strcmp(cmdName, "cd")) {
         cd(cmd);
-    else if (!strcmp(cmdName, "exit"))
+    }
+    else if (!strcmp(cmdName, "exit")) {
         exitShell(procList);
-    else if (!strcmp(cmdName, "list") || !strcmp(cmdName, "jobs"))
+    }
+    else if (!strcmp(cmdName, "list") || !strcmp(cmdName, "jobs")) {
         list(procList);
-    else if (!strcmp(cmdName, "stop"))
+    }
+    else if (!strcmp(cmdName, "stop")) {
         stop(cmd, procList);
-    else if (!strcmp(cmdName, "bg"))
+    }
+    else if (!strcmp(cmdName, "bg")) {
         bg(cmd, procList);
-    else if (!strcmp(cmdName, "fg"))
+    }
+    else if (!strcmp(cmdName, "fg")) {
         fg(cmd, procList, &foregroundPID, &stopReceived);
-    else
-        execExternalCommand(cmd, procList);
+    }
+    else {
+        // Handle pipes and redirections
+        int in, out, finalOutput, fd[2];
+
+        // Open input file
+        if (cmd->in != NULL) {
+            in = open(cmd->in, O_RDONLY);
+            if (in < 0) {
+                printf("minishell: %s: No such file or directory\n", cmd->in);
+                exit(EXIT_FAILURE);
+            }
+        }
+        else {
+            in = STDIN_FILENO;
+        }
+
+        // Open output file
+        if (cmd->out != NULL) {
+            finalOutput = open(cmd->out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (finalOutput < 0) {
+                perror("open");
+                exit(EXIT_FAILURE);
+            }
+        }
+        else {
+            finalOutput = STDOUT_FILENO;
+        }
+
+        // Create a pipe between each consecutive process
+        for (int i = 0; cmd->seq[i] != NULL; i++) {
+            if (cmd->seq[i + 1] != NULL) {
+                pipe(fd);
+                out = fd[1];
+            }
+            else { // Redirect the last command
+                out = finalOutput;
+            }
+
+            // in is assigned in the previous iteration
+            execExternalCommand(in, out, cmd, i, procList);
+            // Close the pipe because it is not used in the parent process
+            if (cmd->seq[i + 1] != NULL && close(out) < 0) {
+                perror("close output");
+            }
+            if (i > 0 && close(in) < 0) {
+                perror("close input");
+            }
+
+            // The next child will read from the current pipe
+            in = fd[0];
+        }
+    }
 }
 
 /*
