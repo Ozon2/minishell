@@ -8,6 +8,7 @@
 #define PS1 "\033[0;33m%s\033[0;0m@\033[0;34mminishell\033[0m:\033[0;32m[%s]\033[0m$ "
 
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -47,6 +48,34 @@ void execExternalCommand(struct cmdline *cmd, proc_t *procList) {
     else if (forkPID == 0) { // Child process
 
         DEBUG_PRINTF("[%d] Child process executing command '%s'\n", getpid(), cmd->seq[0][0]);
+        // Handle input redirection
+        if (cmd->in != NULL) {
+            int inputDesc = open(cmd->in, O_RDONLY);
+            if (inputDesc < 0) {
+                printf("minishell: %s: No such file or directory\n", cmd->in);
+                exit(EXIT_FAILURE);
+            }
+            else {
+                DEBUG_PRINTF("Input read from %s\n", cmd->in);
+                dup2(inputDesc, STDIN_FILENO);
+                close(inputDesc);
+            }
+        }
+
+        // Handle output redirection
+        if (cmd->out != NULL) {
+            int outputDesc = open(cmd->out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (outputDesc < 0) {
+                perror("open");
+                exit(EXIT_FAILURE);
+            }
+            else {
+                DEBUG_PRINTF("Output redirected to %s\n", cmd->out);
+                dup2(outputDesc, STDOUT_FILENO);
+                close(outputDesc);
+            }
+        }
+
         // We need to set the child process in its own group, otherwise
         // it will receive SIGTSTP when CTRL+Z is pressed
         setsid();
@@ -217,16 +246,19 @@ int main() {
 
         // Read a command from standard input and execute it
         cmd = readcmd();
+
         // Print terminated processes and delete them from the list
         updateProcList(procList);
-        if (cmd == NULL) { // Exit if CTRL+D is pressed to avoid infinite loop
-            DEBUG_PRINT("CTRL+D entered\n");
+
+        if (cmd == NULL) { // Exit if CTRL+D is pressed to avoid an infinite loop
+            DEBUG_PRINT("CTRL+D entered, exiting ...\n");
             exitShell(procList);
         }
         else if (cmd->seq == NULL || *(cmd->seq) == NULL) { // Handle empty line
             DEBUG_PRINT("Empty line entered\n");
         }
         else {
+            // Treat the command
             DEBUG_PRINTF("Treating command '%s'\n", cmd->seq[0][0]);
             treatCommand(cmd, procList);
         }
