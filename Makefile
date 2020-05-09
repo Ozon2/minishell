@@ -1,8 +1,8 @@
 CC=gcc
 # Some debug flags to check for memory leaks, and undefined behaviour
 DEBUG=-g3 -fno-omit-frame-pointer -fsanitize=address,undefined,leak,unreachable,null,bounds
-CFLAGS=-Wall -Wextra -pedantic $(DEBUG)
-LDFLAGS=$(DEBUG)
+CFLAGS=-Wall -Wextra -pedantic
+LDFLAGS=
 EXEC=minishell test test_fg
 
 all: minishell test test_fg
