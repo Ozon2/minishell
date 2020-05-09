@@ -79,15 +79,17 @@ void execExternalCommand(int in, int out, struct cmdline *cmd, int i, proc_t *pr
             printProcessByID(procList, newID);
         }
         else {
-            DEBUG_PRINTF("[%d] Parent process waiting for its child %d\n", getpid(), forkPID);
-            foregroundPID = forkPID;
-            // Wait for the child to finish or to be stopped,
-            while (!stopReceived) {
-                sleep(0.1);
+            if (cmd->seq[i + 1] == NULL) { // Don't wait for piped processes
+                DEBUG_PRINTF("[%d] Parent process waiting for its child %d\n", getpid(), forkPID);
+                foregroundPID = forkPID;
+                // Wait for the child to finish or to be stopped
+                while (!stopReceived) {
+                    sleep(0.1);
+                }
+                // Reset stopReceived and foregroundPID values
+                stopReceived = false;
+                foregroundPID = 0;
             }
-            // Reset stopReceived and foregroundPID values
-            stopReceived = false;
-            foregroundPID = 0;
             DEBUG_PRINTF("[%d] Child %d stopped or ended\n", getpid(), forkPID);
         }
     }
@@ -161,10 +163,10 @@ void treatCommand(struct cmdline *cmd, proc_t *procList) {
             // in is assigned in the previous iteration
             execExternalCommand(in, out, cmd, i, procList);
             // Close the pipe because it is not used in the parent process
-            if (cmd->seq[i + 1] != NULL && close(out) < 0) {
+            if (out != STDOUT_FILENO && close(out) < 0) {
                 perror("close output");
             }
-            if (i > 0 && close(in) < 0) {
+            if (in != STDIN_FILENO && close(in) < 0) {
                 perror("close input");
             }
 

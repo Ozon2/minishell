@@ -25,4 +25,7 @@ sleep 1
 list
 sleep 2
 fg +
+du /home | sort | head -5 > a.tmp
+cat a.tmp
+rm a.tmp
 exit
